@@ -1,0 +1,11 @@
+build/model.elf  :
+section                size         addr
+.text                  5910   2147483648
+.rodata             5049628   2147489560
+.tohost                  72   2152539200
+.bss                1505792   2152539328
+.riscv.attributes        67            0
+.comment                 24            0
+Total               6561493
+
+

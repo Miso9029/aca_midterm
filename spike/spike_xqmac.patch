@@ -1,0 +1,117 @@
+diff --git a/disasm/disasm.cc b/disasm/disasm.cc
+index 33d73184..afe42aaf 100644
+--- a/disasm/disasm.cc
++++ b/disasm/disasm.cc
+@@ -1263,6 +1263,8 @@ void disassembler_t::add_instructions(const isa_parser_t* isa, bool strict)
+       DEFINE_RTYPE(divuw);
+       DEFINE_RTYPE(remw);
+       DEFINE_RTYPE(remuw);
++      DEFINE_RTYPE(qmac8);
++      DEFINE_RTYPE(qrequant);
+     }
+   }
+ 
+diff --git a/riscv/encoding.h b/riscv/encoding.h
+index 433bfe7d..f69f0814 100644
+--- a/riscv/encoding.h
++++ b/riscv/encoding.h
+@@ -6630,3 +6630,17 @@ DECLARE_CAUSE("load guest page fault", CAUSE_LOAD_GUEST_PAGE_FAULT)
+ DECLARE_CAUSE("virtual instruction", CAUSE_VIRTUAL_INSTRUCTION)
+ DECLARE_CAUSE("store guest page fault", CAUSE_STORE_GUEST_PAGE_FAULT)
+ #endif
++
++//xqmac our design and requant
++#ifndef MATCH_QMAC8
++#define MATCH_QMAC8 0x0000000b
++#define MASK_QMAC8  0xfe00707f
++#endif
++#ifndef MATCH_QREQUANT
++#define MATCH_QREQUANT 0x0000100b
++#define MASK_QREQUANT  0xfe00707f
++#endif
++#ifdef DECLARE_INSN
++DECLARE_INSN(qmac8, MATCH_QMAC8, MASK_QMAC8)
++DECLARE_INSN(qrequant, MATCH_QREQUANT, MASK_QREQUANT)
++#endif
+\ No newline at end of file
+diff --git a/riscv/insns/qmac8.h b/riscv/insns/qmac8.h
+new file mode 100644
+index 00000000..cc83c816
+--- /dev/null
++++ b/riscv/insns/qmac8.h
+@@ -0,0 +1,9 @@
++//qmac8 rd, rs1, rs2
++require_rv64;
++int32_t acc = (int32_t)RD;
++for(int i=0;i<8;i++){
++    int32_t a = (int8_t)(RS1 >> (8*i));
++    int32_t b = (int8_t)(RS2 >> (8*i));
++    acc += a*b;
++}
++WRITE_RD(sext32(acc));
+\ No newline at end of file
+diff --git a/riscv/insns/qrequant.h b/riscv/insns/qrequant.h
+new file mode 100644
+index 00000000..8f5ad45b
+--- /dev/null
++++ b/riscv/insns/qrequant.h
+@@ -0,0 +1,41 @@
++//qrequant rd, rs1, rs2
++/*bit 63..56  act_max   （int8）
++    bit 55..48  act_min   （int8）
++    bit 47..40  out_zp    （int8）
++    bit 39..32  shift     （int8，通常是負數）
++    bit 31..0   mult      （int32，介於 2^30 和 2^31 之間）*/
++require_rv64;
++{
++int32_t acc = (int32_t)RS1;
++int32_t mult = (int32_t)RS2;
++int32_t shift = (int8_t)(RS2 >> 32);
++int32_t out_zp = (int8_t)(RS2 >> 40);
++int32_t act_min = (int8_t)(RS2 >> 48);
++int32_t act_max = (int8_t)(RS2 >> 56);
++
++int q_left, q_right;
++if (shift > 0) { q_left = shift; q_right = 0; }
++else           { q_left = 0;     q_right = -shift; }
++if (q_left > 31)  q_left = 31;
++if (q_right > 31) q_right = 31;
++int32_t q_x = (int32_t)((uint32_t)acc << q_left);
++
++int32_t q_hi;
++  if (q_x == INT32_MIN && mult == INT32_MIN) {
++    q_hi = INT32_MAX;
++  } else {
++    int64_t q_prod  = (int64_t)q_x * (int64_t)mult;
++    int64_t q_nudge = (q_prod >= 0) ? (1LL << 30) : (1 - (1LL << 30));
++    q_hi = (int32_t)((q_prod + q_nudge) / (1LL << 31));
++  }
++
++  int32_t q_mask = (int32_t)((1LL << q_right) - 1);
++  int32_t q_rem  = q_hi & q_mask;
++  int32_t q_thr  = (q_mask >> 1) + ((q_hi < 0) ? 1 : 0);
++  int32_t q_v    = (q_hi >> q_right) + ((q_rem > q_thr) ? 1 : 0);
++
++  q_v += out_zp;
++  if (q_v < act_min) q_v = act_min;
++  if (q_v > act_max) q_v = act_max;
++  WRITE_RD(sext32(q_v));
++}
+\ No newline at end of file
+diff --git a/riscv/riscv.mk.in b/riscv/riscv.mk.in
+index df29533a..b57af1cc 100644
+--- a/riscv/riscv.mk.in
++++ b/riscv/riscv.mk.in
+@@ -1810,7 +1810,12 @@ riscv_insn_ext_p = \
+ 	pnclipup_h \
+ 	pnclipup_w \
+ 
++riscv_insn_ext_xqmac = \
++	qmac8 \
++	qrequant \
++
+ riscv_insn_list = \
++	$(riscv_insn_ext_xqmac) \
+ 	$(riscv_insn_ext_i) \
+ 	$(riscv_insn_ext_c) \
+ 	$(riscv_insn_ext_f) \

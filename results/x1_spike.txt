@@ -1,0 +1,85 @@
+riscv64-unknown-elf-gcc -O2 -march=rv64imc_zicsr -mabi=lp64 -mcmodel=medany -ffreestanding -fno-builtin -nostdlib -nostartfiles -Wall -Wno-unused-parameter -I. -I../model -DUSE_XQMAC -T bare/link.ld bare/crt0.S bare/platform_spike.c main.c kernels.c kernels_xqmac.c print.c ../model/model_data.c -lgcc -o build_x1/model.elf
+/usr/lib/gcc/riscv64-unknown-elf/14.2.0/../../../riscv64-unknown-elf/bin/ld: warning: build_x1/model.elf has a LOAD segment with RWX permissions
+spike --isa=rv64imc build_x1/model.elf
+config: X1 (Xqmac qmac8 for 1x1 conv)
+op  type       instret         cycles       MAC/inst*100  check
+ 0  QUANTIZE      7477122        7477122             0  OK
+ 1  CONV_2D     209824532      209824532             5  OK
+ 2  DWCONV      106118933      106118933             3  OK
+ 3  CONV_2D      18042430       18042430            35  OK
+ 4  CONV_2D      90326128       90326128            21  OK
+ 5  DWCONV       79394202       79394202             3  OK
+ 6  CONV_2D      10970620       10970620            65  OK
+ 7  CONV_2D      36758476       36758476            29  OK
+ 8  DWCONV      118153233      118153233             3  OK
+ 9  CONV_2D      14134500       14134500            76  OK
+10  ADD           8561555        8561555             0  OK
+11  CONV_2D      36749884       36749884            29  OK
+12  DWCONV       58776751       58776751             4  OK
+13  CONV_2D       5884613        5884613            76  OK
+14  CONV_2D      17965726       17965726            41  OK
+15  DWCONV       95262884       95262884             4  OK
+16  CONV_2D       8518353        8518353            88  OK
+17  ADD           3575615        3575615             0  OK
+18  CONV_2D      17800822       17800822            42  OK
+19  DWCONV       12246992       12246992             3  OK
+20  CONV_2D       4258255        4258255            88  OK
+21  CONV_2D      12256216       12256216            61  OK
+22  DWCONV       23745907       23745907             3  OK
+23  CONV_2D       7551182        7551182            99  OK
+24  ADD           1786859        1786859             0  OK
+25  CONV_2D      12223845       12223845            61  OK
+26  DWCONV       23728109       23728109             3  OK
+27  CONV_2D       7551157        7551157            99  OK
+28  ADD           1786871        1786871             0  OK
+29  CONV_2D      12249614       12249614            61  OK
+30  DWCONV       45360922       45360922             5  OK
+31  CONV_2D      10571382       10571382            99  OK
+32  CONV_2D      20673159       20673159            71  OK
+33  DWCONV       63353263       63353263             5  OK
+34  CONV_2D      14259493       14259493           103  OK
+35  ADD           2499089        2499089             0  OK
+36  CONV_2D      20624547       20624547            71  OK
+37  DWCONV       63322716       63322716             5  OK
+38  CONV_2D      14259545       14259545           103  OK
+39  ADD           2498677        2498677             0  OK
+40  CONV_2D      20552513       20552513            71  OK
+41  DWCONV       15904446       15904446             5  OK
+42  CONV_2D       6111035        6111035           103  OK
+43  CONV_2D      12804823       12804823            84  OK
+44  DWCONV       24422504       24422504             5  OK
+45  CONV_2D      10062241       10062241           107  OK
+46  ADD           1071053        1071053             0  OK
+47  CONV_2D      12770591       12770591            84  OK
+48  DWCONV       24413183       24413183             5  OK
+49  CONV_2D      10062543       10062543           107  OK
+50  ADD           1070369        1070369             0  OK
+51  CONV_2D      12756816       12756816            84  OK
+52  DWCONV       24415281       24415281             5  OK
+53  CONV_2D      10062423       10062423           107  OK
+54  ADD           1070359        1070359             0  OK
+55  CONV_2D      12752425       12752425            84  OK
+56  DWCONV       13691199       13691199             3  OK
+57  CONV_2D      16769841       16769841           107  OK
+58  CONV_2D      21161803       21161803            94  OK
+59  AVGPOOL        673350         673350             0  OK
+60  RESHAPE          6436           6436             0  OK
+61  FC           11578484       11578484            11  OK
+62  SOFTMAX            20             20             0  SKIP
+
+== per-op-type summary ==
+type            instret   share         MACs
+QUANTIZE        7477122     0.4%            0
+CONV_2D       749321533    47.2%    349375488
+DWCONV        792310525    49.9%     34532064
+ADD            23920447     1.5%            0
+AVGPOOL          673350     0.0%            0
+FC             11578484     0.7%      1280000
+SOFTMAX              20     0.0%            0
+RESHAPE            6436     0.0%            0
+
+total instret = 1585287917
+total cycles  = 1585287917
+top-1 = 208 (golden 208)
+layer failures = 0
+RESULT: PASS

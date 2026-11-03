@@ -1,0 +1,3 @@
+riscv64-unknown-elf-size build_x2/model.elf
+   text	   data	    bss	    dec	    hex	filename
+5055992	     72	1505792	6561856	 642040	build_x2/model.elf
